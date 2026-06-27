@@ -1,6 +1,8 @@
 import os
+import asyncio
 import discord
 from discord.ext import commands
+from aiohttp import web
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -19,8 +21,28 @@ async def ping(ctx):
     await ctx.send(f"Pong ! Latence : {latency}ms")
 
 
-if __name__ == "__main__":
+async def healthcheck(request):
+    return web.Response(text="OK")
+
+
+async def start_healthcheck():
+    app = web.Application()
+    app.router.add_get("/", healthcheck)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.getenv("PORT", 10000))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    print(f"Healthcheck server running on port {port}")
+
+
+async def main():
+    await start_healthcheck()
     token = os.getenv("DISCORD_TOKEN")
     if not token:
         raise ValueError("La variable d'environnement DISCORD_TOKEN n'est pas définie")
-    bot.run(token)
+    await bot.start(token)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
